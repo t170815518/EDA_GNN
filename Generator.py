@@ -46,8 +46,8 @@ def FindMatch(list_id, list1, list2):
 class VideoData(object):
 
     def __init__(self, seq_id):
-        self.img = LoadImg("/root/workspace/code/GMTracker-main/data/MOT17/train/MOT17-{}-SDP/img1".format(seq_id))
-        self.gt = np.loadtxt("/root/workspace/code/GMTracker-main/data/MOT17/train/MOT17-{}-SDP/gt/gt.txt".format(seq_id), delimiter=',')
+        self.img = LoadImg("data/MOT17/train/MOT17-{}-SDP/img1".format(seq_id))
+        self.gt = np.loadtxt("data/MOT17/train/MOT17-{}-SDP/gt/gt.txt".format(seq_id), delimiter=',')
 
         self.ImageWidth = self.img[0].size[0]
         self.ImageHeight = self.img[0].size[1]
@@ -58,13 +58,13 @@ class VideoData(object):
         ])
 
     def CurData(self, frame):
-        data = self.gt[self.gt[:, 0] == (frame + 1)]
+        data = self.gt[self.gt[:, 0] == (frame + 1)]    # 第一列是frame id，从0开始的
 
         return data
 
     def PreData(self, frame):
         DataList = []
-        for i in range(5):
+        for i in range(5):  # fixme: hard-coded
             data = self.gt[self.gt[:, 0] == (frame + 1 - i)]
             DataList.append(data)
 
@@ -82,9 +82,9 @@ class VideoData(object):
 
     def Appearance(self, data):
         """
-
+        处理每一帧的图片，根据路人的bounding box裁剪对应的区域
         :param data:
-        :return:
+        :return: appearance, list
         """
         appearance = []
         img = self.img[int(data[0, 0]) - 1]
@@ -97,6 +97,11 @@ class VideoData(object):
         return appearance
 
     def CurMotion(self, data):
+        """
+
+        :param data:
+        :return: motion, list of 2-element tensors
+        """
         motion = []
         for i in range(data.shape[0]):
             coordinate = torch.zeros([2])
@@ -146,7 +151,24 @@ class VideoData(object):
         pre = self.PreData(frame - 1)
 
         cur_crop = self.Appearance(cur)
-        pre_crop = self.Appearance(pre[0])
+        pre_crop = self.Appearance(pre[0])  # 只比较t和t-1状态的图片相似性
+
+        cur_motion = self.CurMotion(cur)
+        pre_motion = self.PreMotion(pre)    # list of (TIME_STEP, 2) tensors
+
+        cur_id = self.GetID(cur)
+        pre_id = self.GetID(pre[0])
+
+        list_id = [x for x in pre_id if x in cur_id]  # list_id: 在前后两帧都出现的id
+        index_pair = FindMatch(list_id, pre_id, cur_id)
+        gt_matrix = np.zeros([len(pre_id), len(cur_id)])
+#         修改
+        for i in range(len(index_pair) // 2):
+            gt_matrix[index_pair[2 * i], index_pair[2 * i + 1]] = 1
+
+        return cur_crop, pre_crop, cur_motion, pre_motion, cur_id, pre_id, gt_matrix
+
+
 
         cur_motion = self.CurMotion(cur)
         pre_motion = self.PreMotion(pre)

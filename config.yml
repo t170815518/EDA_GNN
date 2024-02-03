@@ -19,5 +19,5 @@ start_epoch                  : 0
 print_freq                   : 10
 checkpoint                   : 10
 n_threads                    : 2
-result                       : /root/workspace/code/EDA_GNN-master/result
+result                       : result
 # --------------------------- End ---------------------------

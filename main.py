@@ -15,6 +15,8 @@ from Generator import Generator
 import numpy as np
 import random
 
+CUDA_DEVICE_ID = 0
+
 seed = 1
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.deterministic = True
@@ -22,7 +24,7 @@ torch.backends.cudnn.benchmark = True
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
 
-torch.cuda.set_device(1)
+torch.cuda.set_device(CUDA_DEVICE_ID)
 
 np.random.seed(seed)
 random.seed(seed)

@@ -11,6 +11,14 @@ from utils import *
 
 
 def train(parser, generator, log, log_path):
+    """
+    Train the model only without evaluation
+    :param parser:
+    :param generator:
+    :param log:
+    :param log_path:
+    :return:
+    """
     # print("training net_1024\n")
     # model = net_1024.net_1024()
 
