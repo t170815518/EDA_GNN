@@ -3,3 +3,5 @@ data/
 train/__pycache__/
 model/__pycache__/
 __pycache__/
+result/
+notebook/.ipynb_checkpoints/

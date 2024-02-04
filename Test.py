@@ -11,6 +11,7 @@ import torch
 from torchvision import transforms
 from PIL import Image, ImageDraw
 from model import net_1024
+from Generator import ShipSequenceData
 
 
 def LoadImg(img_path):
@@ -136,22 +137,34 @@ class VideoData(object):
         pre_motion = self.PreMotion(pre)
         pre_id = self.GetID(pre[0])
 
+        # training generator returns (cur_crop, pre_crop, cur_motion, pre_motion, cur_id, pre_id, gt_matrix)
         return det_crop, det_motion, pre_crop, pre_motion, pre_id
 
 
 class TestGenerator(object):
 
-    def __init__(self, res_path, info):
-        net = net_1024.net_1024()
-        net_path = "SaveModel/net_1024_beta2.pth"
+    def __init__(self, res_path, info, is_ship, net_path = "SaveModel/net_1024_beta2.pth"):
+        """
+
+        :param res_path:
+        :param info: str, the path to csv file if is_ship is True
+        :param is_ship:
+        """
+        net = net_1024.net_1024(is_cnn=not is_ship)
+
         print("------->  loading net_1024")
         self.net = LoadModel(net, net_path)
 
         self.sequence = []
+        if is_ship:
+            print("------->  initializing  Ship data from {}".format(info))
+            self.sequence.append(ShipSequenceData(info))
+            print("------->  initialize  Ship data from {}  done".format(info))
+        else:
 
-        print("------->  initializing  MOT17-{}-{} ...".format(info[0], info[1]))
-        self.sequence.append(VideoData(info, res_path))
-        print("------->  initialize  MOT17-{}-{}  done".format(info[0], info[1]))
+            print("------->  initializing  MOT17-{}-{} ...".format(info[0], info[1]))
+            self.sequence.append(VideoData(info, res_path))
+            print("------->  initialize  MOT17-{}-{}  done".format(info[0], info[1]))
 
         self.vis_save_path = "test/visualize"
 
@@ -194,8 +207,9 @@ class TestGenerator(object):
     def __call__(self, SeqID, frame):
         # frame start with 5, exist frame start from 1
         sequence = self.sequence[SeqID]
-        det_crop, det_motion, pre_crop, pre_motion, pre_id = sequence(frame)
+        # training generator returns (cur_crop, pre_crop, cur_motion, pre_motion, cur_id, pre_id, gt_matrix)
+        det_crop, pre_crop, det_motion, pre_motion, pre_id, cur_id, gt_matrix = sequence(frame)
         with torch.no_grad():
             s0, s1, s2, s3, adj1, adj = self.net(pre_crop, det_crop, pre_motion, det_motion)
 
-        return adj
+        return adj, cur_id

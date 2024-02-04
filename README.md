@@ -9,6 +9,8 @@ According paper can be found at [https://arxiv.org/abs/1907.05315]
 Use `python main.py` to train a model from scratch. Settings for training is in `config.yml`.  
 Use `python tracking.py` to track a test video, meanwhile you need to provide the detected objects & tracking results for the first five frames. Setting for tracking is in `setting/`.
 
+Use `python test_on_ship.py` to run the test for evaluation metrics.
+
 ## Requirements
  - Python 2.7.12
  - numpy 1.11.0

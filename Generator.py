@@ -288,7 +288,7 @@ class Generator(object):
         self.sequence = []
 
         if is_ship:
-            self.SequenceID = ['55new_processed.csv', '1010new_processed.csv', '2020new_processed.csv']
+            self.SequenceID = ['55new_processed.csv', '2020new_processed.csv']
 
             self.vis_save_path = "ship_dataset/visualize"
 
