@@ -5,6 +5,8 @@
 # @Date    : 2018/10/24
 
 import math
+
+import pandas as pd
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -62,6 +64,24 @@ class ANet_2(nn.Module):
         return x
 
 
+class MLP(nn.Module):
+    def __init__(self):
+        super(MLP, self).__init__()
+        self.fc1 = nn.Linear(7, 64)
+        self.fc2 = nn.Linear(64, 128)
+        self.fc3 = nn.Linear(128, 128)
+        self.fc4 = nn.Linear(128, 128)
+        self.relu = nn.ReLU()
+
+    def forward(self, x):
+        x = x.float()
+        out = self.relu(self.fc1(x))
+        out = self.relu(self.fc2(out))
+        out = self.relu(self.fc3(out))
+        out = self.fc4(out)
+        return out
+
+
 class ANet(nn.Module):
 
     def __init__(self):
@@ -112,9 +132,13 @@ class LSTM(nn.Module):
 
 class embnet(nn.Module):
 
-    def __init__(self):
+    def __init__(self, is_cnn: bool = True):
         super(embnet, self).__init__()
-        self.ANet = ANet()
+        if is_cnn:
+            self.ANet = ANet()
+        else:
+            self.ANet = MLP()
+
         self.lstm = LSTM(hidden_size=16)
         self.fc = nn.Linear(2, 16, bias=False)
 
@@ -133,7 +157,7 @@ class embnet(nn.Module):
 
     def forward(self, pre_crop, cur_crop, pre_coord, cur_coord):
         pre_crop = self.ANet(pre_crop)
-        with torch.no_grad():
+        with torch.no_grad():   # todo: why?
             cur_crop = self.ANet(cur_crop)
         pre_coord = self.lstm(pre_coord)
         cur_coord = self.fc(cur_coord)
@@ -244,9 +268,9 @@ class GCN(nn.Module):
 
 class net_1024(nn.Module):
 
-    def __init__(self):
+    def __init__(self, is_cnn: bool = True):
         super(net_1024, self).__init__()
-        self.embnet = embnet()
+        self.embnet = embnet(is_cnn)
         self.gc = GCN(planes=144)
 
     def forward(self, pre_crop, cur_crop, pre_motion, cur_motion):
@@ -254,6 +278,10 @@ class net_1024(nn.Module):
         # pdb.set_trace()
         cur_num = len(cur_crop)
         pre_num = len(pre_crop)
+
+        if isinstance(pre_crop, pd.DataFrame):
+            pre_crop = pre_crop.values
+            cur_crop = cur_crop.values
 
         adj1 = torch.zeros(pre_num, cur_num).cuda()
         pre_feature = torch.zeros(pre_num, 144).cuda()
@@ -263,10 +291,10 @@ class net_1024(nn.Module):
         s2 = torch.zeros(pre_num * cur_num).cuda()
 
         for i in range(pre_num):
-            pre_crop_ = pre_crop[i].cuda().unsqueeze(dim=0)
-            pre_motion_ = pre_motion[i].cuda().unsqueeze(dim=0)
+            pre_crop_ = torch.tensor(pre_crop[i]).cuda().unsqueeze(dim=0)
+            pre_motion_ = torch.tensor(pre_motion[i]).cuda().unsqueeze(dim=0)
             for j in range(cur_num):
-                cur_crop_ = cur_crop[j].cuda().unsqueeze(dim=0)
+                cur_crop_ = torch.tensor(cur_crop[j]).cuda().unsqueeze(dim=0)
                 cur_motion_ = cur_motion[j].cuda().unsqueeze(dim=0)
                 
                 # import pdb

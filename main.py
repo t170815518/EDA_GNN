@@ -47,7 +47,7 @@ print_log("cudnn version : {}".format(torch.backends.cudnn.version()), log)
 for idx, data in enumerate(settings_show):
     print_log(data, log)
 
-generator = Generator(entirety=parser.entirety)
+generator = Generator(entirety=parser.entirety, is_ship=parser.dataset == 'ship')
 
 # if parser.model == "EmbeddingNet":
 #     train_EmbeddingNet.train(parser, generator, log, log_path)
@@ -57,7 +57,7 @@ generator = Generator(entirety=parser.entirety)
 #     train_FuckUpNet.train(parser, generator, log, log_path)
 # elif parser.model == "net_1024":
 if parser.model == "net_1024":
-    train_net_1024.train(parser, generator, log, log_path)
+    train_net_1024.train(parser, generator, log, log_path, is_cnn=parser.dataset != 'ship')
 else:
     raise NotImplementedError
 

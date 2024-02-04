@@ -7,6 +7,7 @@
 import os, random
 import os.path as osp
 import numpy as np
+import pandas as pd
 import torch
 from torchvision import transforms
 from PIL import Image, ImageDraw
@@ -113,7 +114,7 @@ class VideoData(object):
     def PreMotion(self, DataTuple):
         """
 
-        :param DataTuple:
+        :param DataTuple: list of motion information for each video sequence
         :return:
         """
         motion = []
@@ -122,13 +123,14 @@ class VideoData(object):
             coordinate = torch.zeros([5, 2])
             identity = nameless[i, 1]
             coordinate[4, 0], coordinate[4, 1] = self.CenterCoordinate(nameless[i])
-            for j in range(1, 5):
+            for j in range(1, 5):   # todo: 5 videos?
                 unknown = DataTuple[j]
-                if identity in unknown[:, 1]:
+                if identity in unknown[:, 1]:  # if subject at frame t is also in the frame t-j
+                    subject_prev_info = unknown[unknown[:, 1] == identity].squeeze()
                     coordinate[4 - j, 0], coordinate[4 - j, 1] = self.CenterCoordinate(
-                        unknown[unknown[:, 1] == identity].squeeze())
+                            subject_prev_info)
                 else:
-                    coordinate[4 - j, :] = coordinate[5 - j, :]
+                    coordinate[4 - j, :] = coordinate[5 - j, :]  # pad if the subject motion history < 5 (it does not happen)
             motion.append(coordinate)
 
         return motion
@@ -169,6 +171,93 @@ class VideoData(object):
         return cur_crop, pre_crop, cur_motion, pre_motion, cur_id, pre_id, gt_matrix
 
 
+class ShipSequenceData(object):
+    def __init__(self, seq_id: str):
+        """
+
+        :param seq_id: str, e.g., 55new.csv
+        """
+        csv_path = 'data/{}'.format(seq_id)
+        df = pd.read_csv(csv_path)
+        self.gt = df
+
+        self.frame_len = len(df['Sample_Time'].unique())
+        print(f'{self.frame_len} frames found in {csv_path}')
+
+    def CurData(self, frame: int):
+        data = self.gt[self.gt.iloc[:, 1] == frame]   # frame in the dataset starts from 0
+
+        return data
+
+    def PreData(self, frame: int):
+        DataList = []
+        for i in range(5):  # fixme: 5 is hard-coded
+            data = self.gt[self.gt.iloc[:, 1] == (frame - i)]
+            DataList.append(data)
+
+        return DataList
+
+    def TotalFrame(self):
+        return self.frame_len
+
+    def CurMotion(self, data):
+        """
+
+        :param data: pd.Series
+        :return:
+        """
+        motion = []
+        for i in range(data.shape[0]):
+            coordinate = torch.zeros([2])
+            coordinate[0], coordinate[1] = data.iloc[i, 2], data.iloc[i, 3]
+            motion.append(coordinate)
+
+        return motion
+
+    def PreMotion(self, DataTuple):
+        """
+
+        :param DataTuple:
+        :return:
+        """
+        motion = []
+        t_minus_1 = DataTuple[0]
+        for i in range(t_minus_1.shape[0]):
+            coordinate = torch.zeros([5, 2])
+            identity = t_minus_1.iloc[i, 0] # identity = ship id
+            coordinate[4, 0], coordinate[4, 1] = t_minus_1.iloc[i, 2], t_minus_1.iloc[i, 3]
+            for j in range(1, 5):
+                unknown = DataTuple[j]
+                identity_select_mask = unknown.iloc[:, 0] == identity
+                if identity_select_mask.any():
+                    subject_prev_info = unknown[identity_select_mask]
+                    coordinate[4 - j, 0], coordinate[4 - j, 1] = (subject_prev_info.iloc[0, 2],
+                                                                  subject_prev_info.iloc[0, 3])
+                else:
+                    coordinate[4 - j, :] = coordinate[5 - j, :]
+            motion.append(coordinate)
+
+        return motion
+
+    def GetID(self, data):
+        id = []
+        for i in range(data.shape[0]):
+            id.append(data.iloc[i, 0])
+
+        return id
+
+    def __call__(self, frame: int):
+        """
+        :param frame: int, the id of frame
+        :return: features
+        """
+        assert 5 <= frame < self.TotalFrame()
+
+        cur = self.CurData(frame)  # 得到当前帧的数据
+        pre = self.PreData(frame - 1)   # 得到之前的数据
+
+        cur_crop = cur.iloc[:, 4:]  # 提取船舰本身的特征
+        pre_crop = pre[0].iloc[:, 4:]
 
         cur_motion = self.CurMotion(cur)
         pre_motion = self.PreMotion(pre)
@@ -187,27 +276,43 @@ class VideoData(object):
 
 
 class Generator(object):
-    def __init__(self, entirety=False):
+    """
+    For data loading.
+    """
+    def __init__(self, entirety=True, is_ship: bool = False):
         """
 
-        :param entirety:
+        :param entirety: bool, if to use all the videos in MOT17
+        :param is_ship: bool, if to load ship dataset instead of videos
         """
         self.sequence = []
 
-        if entirety == True:
-            # self.SequenceID = ["02", "04", "05", "09", "10", "11", "13"]
-            self.SequenceID = [ "05", "09"]
+        if is_ship:
+            self.SequenceID = ['55new_processed.csv', '1010new_processed.csv', '2020new_processed.csv']
+
+            self.vis_save_path = "ship_dataset/visualize"
+
+            print("\n-------------------------- initialization --------------------------")
+            for id in self.SequenceID:
+                print("initializing sequence {} ...".format(id))
+                self.sequence.append(ShipSequenceData(id))
+                print("initialize {} done".format(id))
+            print("------------------------------ done --------------------------------\n")
         else:
-            self.SequenceID = ["09"]
+            if entirety:
+                self.SequenceID = ["02", "04", "05", "09", "10", "11", "13"]
+                # self.SequenceID = [ "05", "09"]
+            else:
+                self.SequenceID = ["09"]
 
-        self.vis_save_path = "MOT17/visualize"
+            self.vis_save_path = "MOT17/visualize"
 
-        print("\n-------------------------- initialization --------------------------")
-        for id in self.SequenceID:
-            print("initializing sequence {} ...".format(id))
-            self.sequence.append(VideoData(id))
-            print("initialize {} done".format(id))
-        print("------------------------------ done --------------------------------\n")
+            print("\n-------------------------- initialization --------------------------")
+            for id in self.SequenceID:
+                print("initializing sequence {} ...".format(id))
+                self.sequence.append(VideoData(id))
+                print("initialize {} done".format(id))
+            print("------------------------------ done --------------------------------\n")
 
     def visualize(self, seq_ID, frame, save_path=None):
         """
@@ -251,7 +356,7 @@ class Generator(object):
         :return:
         """
         seq = random.choice(self.sequence)
-        frame = random.randint(5, seq.TotalFrame() - 1)
+        frame = random.randint(5, seq.TotalFrame() - 1) # For the LSTM module, we set the length of tracklet $L = 5$.
         cur_crop, pre_crop, cur_motion, pre_motion, cur_id, pre_id, gt_matrix = seq(frame)
 
         return cur_crop, pre_crop, cur_motion, pre_motion, gt_matrix

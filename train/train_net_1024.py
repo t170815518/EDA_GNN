@@ -10,7 +10,7 @@ from model import net_1024
 from utils import *
 
 
-def train(parser, generator, log, log_path):
+def train(parser, generator, log, log_path, is_cnn: bool = True):
     """
     Train the model only without evaluation
     :param parser:
@@ -23,7 +23,7 @@ def train(parser, generator, log, log_path):
     # model = net_1024.net_1024()
 
     print("training final\n")
-    model = net_1024.net_1024()
+    model = net_1024.net_1024(is_cnn)
 
     "----------------- pretrained model loading -----------------"
     # print("loading pretrained model")
