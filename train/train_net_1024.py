@@ -12,7 +12,7 @@ from utils import *
 
 def train(parser, generator, log, log_path, is_cnn: bool = True):
     """
-    Train the model only without evaluation
+    Train the model and save the model at last, without evaluation
     :param parser:
     :param generator:
     :param log:

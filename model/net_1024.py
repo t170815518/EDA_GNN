@@ -98,8 +98,7 @@ class ANet(nn.Module):
                 nn.init.xavier_uniform_(m.weight)
 
     def forward(self, x):
-        with torch.no_grad():
-            x = F.max_pool2d(self.conv1(x), 2)
+        x = F.max_pool2d(self.conv1(x), 2)
         x = F.relu(x)
         x = F.max_pool2d(self.conv2(x), 2)
         x = F.relu(x)
@@ -109,9 +108,6 @@ class ANet(nn.Module):
         x = F.relu(x)
 
         x = F.avg_pool2d(x, kernel_size=(5, 2))
-        x = F.avg_pool2d(x, kernel_size=(2, 7))
-        # import pdb
-        # pdb.set_trace()
         x = x.view(x.size(0), -1)
 
         return x
@@ -157,8 +153,7 @@ class embnet(nn.Module):
 
     def forward(self, pre_crop, cur_crop, pre_coord, cur_coord):
         pre_crop = self.ANet(pre_crop)
-        with torch.no_grad():   # todo: why?
-            cur_crop = self.ANet(cur_crop)
+        cur_crop = self.ANet(cur_crop)
         pre_coord = self.lstm(pre_coord)
         cur_coord = self.fc(cur_coord)
 
@@ -300,8 +295,7 @@ class net_1024(nn.Module):
                 # import pdb
                 # pdb.set_trace()
                 
-                with torch.no_grad():
-                    score0_, score1_, score2_, pre, cur = self.embnet(pre_crop_, cur_crop_, pre_motion_, cur_motion_)
+                score0_, score1_, score2_, pre, cur = self.embnet(pre_crop_, cur_crop_, pre_motion_, cur_motion_)
                 adj1[i, j] = score0_
                 s0[i * cur_num + j] = score0_
                 s1[i * cur_num + j] = score1_
