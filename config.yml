@@ -2,7 +2,7 @@
 mode                         : 1   # 0 for debug
 description                  : net_1024
 device                       : "1"
-epochs                       : 250
+epochs                       : 300
 gammas                       : [0.1, 0.1, 0.1]
 schedule                     : [10000, 20000, 30000]
 learning_rate                : 0.001

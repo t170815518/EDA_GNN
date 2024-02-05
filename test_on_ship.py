@@ -32,4 +32,10 @@ for seq_id, seq in enumerate(test_generator.sequence):
 
 mh = mm.metrics.create()
 summary = mh.compute(acc, metrics=['num_frames', 'mota', 'idf1'], name='acc')
-print(summary)
+strsummary = mm.io.render_summary(
+    summary,
+    formatters={'mota' : '{:.2%}'.format,
+                'idf1' : '{:.2%}'.format,},
+    namemap={'mota': 'MOTA', 'idf1' : 'IDF1'}
+)
+print(strsummary)
